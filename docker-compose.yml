@@ -1,0 +1,113 @@
+services:
+  emqx:
+    image: emqx/emqx:5.8.0
+    restart: unless-stopped
+    ports: ["1883:1883", "18083:18083"]
+    environment:
+      EMQX_ALLOW_ANONYMOUS: "false"
+      EMQX_AUTHENTICATION__1__MECHANISM: password_based
+      EMQX_AUTHENTICATION__1__BACKEND: built_in_database
+    volumes: [emqx_data:/opt/emqx/data]
+  influxdb:
+    image: influxdb:2.7
+    restart: unless-stopped
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUX_USER}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_PASS}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUX_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUX_BUCKET}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN}
+    volumes: [influx_data:/var/lib/influxdb2]
+  telegraf:
+    image: telegraf:1.31
+    restart: unless-stopped
+    depends_on: [emqx, influxdb]
+    env_file: .env
+    volumes: ["./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro"]
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASS}
+      GF_SERVER_ROOT_URL: https://${DOMAIN}/
+    depends_on: [influxdb]
+    volumes: [grafana_data:/var/lib/grafana]
+  backend:
+    build: ./backend
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+    env_file: .env
+    depends_on: [emqx]
+  api_poller:
+    build: ./devices
+    command: python open_meteo_poller.py
+    restart: unless-stopped
+    env_file: .env
+    depends_on: [emqx]
+  gps_poller:
+    build: ./devices
+    command: python gps_route_poller.py
+    restart: unless-stopped
+    env_file: .env
+    depends_on: [emqx]
+  twin_weather:
+    build: ./devices
+    command: python twin_device.py TWIN-WX-01 weather
+    restart: unless-stopped
+    env_file: .env
+    depends_on: [emqx]
+  twin_air:
+    build: ./devices
+    command: python twin_device.py TWIN-AQ-01 air
+    restart: unless-stopped
+    env_file: .env
+    depends_on: [emqx]
+  nginx:
+    image: nginx:1.27
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on: [grafana, backend]
+
+
+  twin_weather_02:
+    build: ./devices
+    command: python twin_device.py TWIN-WX-02 weather
+    restart: unless-stopped
+    env_file: .env
+    depends_on: [emqx]
+
+  twin_air_02:
+    build: ./devices
+    command: python twin_device.py TWIN-AQ-02 air
+    restart: unless-stopped
+    env_file: .env
+    depends_on: [emqx]
+
+  twin_weather_03:
+    build: ./devices
+    command: python twin_device.py TWIN-WX-03 weather
+    restart: unless-stopped
+    env_file: .env
+    depends_on: [emqx]
+
+  twin_air_03:
+    build: ./devices
+    command: python twin_device.py TWIN-AQ-03 air
+    restart: unless-stopped
+    env_file: .env
+    depends_on: [emqx]
+  twin_weather_04:
+    build: ./devices
+    command: python twin_device.py TWIN-WX-04 weather
+    restart: unless-stopped
+    env_file: .env
+    depends_on: [emqx]
+
+volumes: {emqx_data: {}, influx_data: {}, grafana_data: {}}

@@ -1,0 +1,27 @@
+.env
+__pycache__/
+*.pem
+
+# Secretos y credenciales
+.env.*
+!.env.example
+*.key
+*.p12
+*.pfx
+*.crt
+*.log
+
+# Archivos temporales
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Respaldos y archivos generados
+dashboard_backup.json
+dashboard_publicar.json
+dashboard_nuevo.json
+dashboard_corregido.json
+
+# Certificados privados
+letsencrypt/
